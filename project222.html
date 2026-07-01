@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Face Attendance System</title>
+<meta name="description" content="Automatic face recognition attendance system for students — powered by face-api.js">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+<style>
+/* ─── CSS VARIABLES (Light / Dark Theme) ─────────────────────────── */
+:root {
+  --bg:           #f0f2f7;
+  --surface:      #ffffff;
+  --surface2:     #f7f8fc;
+  --border:       #e2e5ef;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-faint:   #9ca3af;
+  --primary:      #4f8ef7;
+  --primary-dark: #3b7de8;
+  --primary-glow: rgba(79,142,247,0.18);
+  --success:      #10b981;
+  --success-bg:   #d1fae5;
+  --success-text: #065f46;
+  --warn-bg:      #fef3c7;
+  --warn-text:    #92400e;
+  --err-bg:       #fee2e2;
+  --err-text:     #991b1b;
+  --info-bg:      #dbeafe;
+  --info-text:    #1e40af;
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow:       0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg:    0 10px 40px rgba(0,0,0,.14);
+  --radius:       14px;
+  --font:         'Inter', 'Segoe UI', Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --bg:           #0d1117;
+  --surface:      #161b22;
+  --surface2:     #0d1117;
+  --border:       #30363d;
+  --text:         #e6edf3;
+  --text-muted:   #8b949e;
+  --text-faint:   #484f58;
+  --primary:      #58a6ff;
+  --primary-dark: #4f8ef7;
+  --primary-glow: rgba(88,166,255,0.15);
+  --success:      #3fb950;
+  --success-bg:   #0d2818;
+  --success-text: #56d364;
+  --warn-bg:      #2d1f06;
+  --warn-text:    #d29922;
+  --err-bg:       #2d0f0f;
+  --err-text:     #f85149;
+  --info-bg:      #0c1f3a;
+  --info-text:    #58a6ff;
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.3);
+  --shadow:       0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:    0 10px 40px rgba(0,0,0,.6);
+}
+
+/* ─── BASE ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background .25s, color .25s;
+  line-height: 1.5;
+}
+
+.app { max-width: 980px; margin: 0 auto; padding: 1rem 1rem 3rem; }
+
+/* ─── HEADER ───────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0 1.1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-brand { display: flex; align-items: center; gap: 12px; }
+.brand-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 12px var(--primary-glow);
+  flex-shrink: 0;
+}
+.header h1 { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; }
+.header p  { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+.admin-badge {
+  display: none; align-items: center; gap: 6px;
+  background: var(--success-bg); color: var(--success-text);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 700;
+  border: 1px solid var(--success);
+}
+.admin-badge.show { display: flex; }
+.admin-badge button {
+  background: none; border: none; cursor: pointer;
+  color: inherit; font-size: 11px; padding: 0 0 0 6px;
+  font-family: inherit; opacity: .7;
+}
+.admin-badge button:hover { opacity: 1; }
+
+.icon-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px;
+  transition: all .15s;
+  box-shadow: var(--shadow-sm);
+}
+.icon-btn:hover { background: var(--surface2); box-shadow: var(--shadow); }
+
+/* ─── NAV ──────────────────────────────────────────────────────────── */
+.nav {
+  display: flex; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 5px;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.nav button {
+  flex: 1; padding: 9px 10px;
+  border: none; border-radius: 9px;
+  font-size: 13px; cursor: pointer;
+  background: transparent; color: var(--text-muted);
+  transition: all .18s; font-family: var(--font); font-weight: 500;
+}
+.nav button.active {
+  background: var(--primary); color: #fff;
+  font-weight: 700; box-shadow: 0 2px 10px var(--primary-glow);
+}
+.nav button:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+/* ─── SECTIONS ─────────────────────────────────────────────────────── */
+.section { display: none; animation: fadeIn .2s ease; }
+.section.active { display: block; }
+
+/* ─── CARD ─────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+.section-title {
+  font-size: 10.5px; font-weight: 700;
+  color: var(--text-faint); margin-bottom: 16px;
+  text-transform: uppercase; letter-spacing: .1em;
+}
+
+/* ─── VIDEO AREA ───────────────────────────────────────────────────── */
+.video-outer {
+  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin: 0 auto 16px;
+  max-width: 540px;
+  box-shadow: var(--shadow-lg);
+}
+.video-wrap {
+  position: relative;
+  width: 100%; border-radius: 11px; overflow: hidden;
+  background: #111; aspect-ratio: 4/3;
+}
+video { width: 100%; height: 100%; object-fit: cover; display: block; }
+canvas.overlay {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%; pointer-events: none;
+}
+
+/* Scan ring (SVG circle progress) */
+.scan-ring {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; opacity: 0; transition: opacity .3s;
+}
+.scan-ring.active { opacity: 1; }
+.scan-ring svg { width: 160px; height: 160px; }
+
+/* Countdown */
+.countdown-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.45);
+  font-size: 80px; font-weight: 900; color: #fff;
+  text-shadow: 0 0 30px rgba(79,142,247,.8);
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.countdown-overlay.show { opacity: 1; }
+
+/* Video status pill */
+.vid-pill {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(13,17,23,.75); color: #fff;
+  font-size: 12px; font-weight: 600; padding: 5px 15px;
+  border-radius: 50px; white-space: nowrap;
+  backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.1);
+  transition: background .2s;
+}
+.vid-pill.ok { background: rgba(16,185,129,.8); }
+.vid-pill.warn { background: rgba(245,158,11,.8); }
+
+/* Camera controls below video */
+.cam-controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+
+/* ─── AUTO INDICATOR ───────────────────────────────────────────────── */
+.auto-bar {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  border-radius: 9px; padding: 9px 14px;
+  font-size: 13px; color: var(--success-text); font-weight: 600;
+  margin-bottom: 12px;
+}
+.pulse-dot {
+  width: 9px; height: 9px;
+  background: var(--success); border-radius: 50%;
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+
+/* ─── SAMPLE DOTS (multi-angle) ────────────────────────────────────── */
+.sample-row {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center; margin: 10px 0;
+}
+.sample-dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--border); border: 2px solid var(--border);
+  transition: all .25s;
+}
+.sample-dot.active { background: var(--primary); border-color: var(--primary); animation: pulseDot .9s infinite; }
+.sample-dot.done   { background: var(--success); border-color: var(--success); transform: scale(1.15); }
+
+/* ─── FORM ─────────────────────────────────────────────────────────── */
+.form-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 12px;
+}
+label { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; display: block; font-weight: 600; }
+input, select {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid var(--border); border-radius: 9px;
+  font-size: 14px; background: var(--surface); color: var(--text);
+  outline: none; font-family: var(--font);
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+input::placeholder { color: var(--text-faint); }
+select option { background: var(--surface); color: var(--text); }
+
+/* ─── SEARCH BAR ───────────────────────────────────────────────────── */
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-wrap input { padding-left: 38px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
+
+/* ─── BUTTONS ──────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 9px; border: 1.5px solid var(--border);
+  font-size: 13.5px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; border-color: transparent; box-shadow: 0 2px 8px var(--primary-glow); }
+.btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 16px var(--primary-glow); transform: translateY(-1px); }
+.btn-secondary { background: var(--surface); color: var(--text); }
+.btn-secondary:hover { background: var(--surface2); }
+.btn-danger { background: transparent; color: var(--err-text); border-color: var(--err-text); }
+.btn-danger:hover { background: var(--err-bg); }
+.btn-success { background: var(--success); color: #fff; border-color: transparent; }
+.btn-success:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+.actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+/* ─── STATUS BAR ───────────────────────────────────────────────────── */
+.status-bar { padding: 10px 14px; border-radius: 9px; font-size: 13px; font-weight: 500; margin-bottom: 1rem; }
+.status-bar.info    { background: var(--info-bg);    color: var(--info-text); }
+.status-bar.success { background: var(--success-bg); color: var(--success-text); }
+.status-bar.error   { background: var(--err-bg);     color: var(--err-text); }
+.status-bar.warning { background: var(--warn-bg);    color: var(--warn-text); }
+
+/* ─── STATS GRID ───────────────────────────────────────────────────── */
+.stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 11px; padding: 14px 10px; text-align: center;
+}
+.stat-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.stat-label { font-size: 11px; color: var(--text-faint); margin-top: 4px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+
+/* ─── STUDENT CARD ─────────────────────────────────────────────────── */
+.student-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 11px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 13px; margin-bottom: 8px;
+  transition: box-shadow .15s, border-color .15s;
+}
+.student-card:hover { box-shadow: var(--shadow); border-color: var(--primary); }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--success-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: var(--success); flex-shrink: 0;
+}
+.student-info { flex: 1; min-width: 0; }
+.student-info strong { font-size: 14px; display: block; font-weight: 700; }
+.student-info .meta  { font-size: 12px; color: var(--text-muted); }
+.student-info .sub   { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+/* ─── BADGE ────────────────────────────────────────────────────────── */
+.badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; }
+.badge-success { background: var(--success-bg); color: var(--success-text); }
+.badge-muted   { background: var(--surface2); color: var(--text-faint); }
+.badge-info    { background: var(--info-bg); color: var(--info-text); }
+
+/* ─── RESULT BOX ───────────────────────────────────────────────────── */
+.big-result { text-align: center; padding: 1.75rem; border-radius: var(--radius); margin-bottom: 1rem; animation: fadeIn .25s ease; }
+.big-result.success-box { background: var(--success-bg); border: 1.5px solid var(--success); }
+.big-result.fail-box    { background: var(--warn-bg);    border: 1.5px solid #d97706; }
+.big-result.dup-box     { background: var(--info-bg);    border: 1.5px solid var(--primary); }
+.big-result h2 { font-size: 19px; font-weight: 800; margin-bottom: 8px; }
+
+/* ─── DETAIL GRID ──────────────────────────────────────────────────── */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; margin-top: 14px; }
+.detail-item { background: rgba(255,255,255,.55); border-radius: 9px; padding: 9px 12px; }
+[data-theme="dark"] .detail-item { background: rgba(255,255,255,.05); }
+.detail-item .dlabel { font-size: 10.5px; color: var(--text-muted); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.detail-item .dval   { font-size: 13px; font-weight: 700; }
+
+/* ─── LOG ENTRY ────────────────────────────────────────────────────── */
+.log-entry {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-time { color: var(--text-faint); min-width: 70px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.log-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.log-controls input[type="date"] { width: auto; }
+.log-summary { font-size: 12px; color: var(--text-faint); margin-left: auto; font-weight: 600; }
+
+/* ─── CAPTURE PREVIEW ──────────────────────────────────────────────── */
+.capture-preview { display: none; align-items: center; gap: 12px; margin-top: 14px; background: var(--success-bg); border: 1px solid var(--success); border-radius: 10px; padding: 12px; }
+.capture-img { width: 80px; height: 80px; border-radius: 9px; object-fit: cover; border: 3px solid var(--success); }
+
+/* ─── NO DATA ──────────────────────────────────────────────────────── */
+.no-data { text-align: center; padding: 2.5rem 1rem; color: var(--text-faint); font-size: 13px; }
+.no-data .nd-icon { font-size: 36px; margin-bottom: 10px; opacity: .5; }
+
+/* ─── SUCCESS POPUP ────────────────────────────────────────────────── */
+#success-popup {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  display: none; align-items: center; justify-content: center;
+  z-index: 900; padding: 1rem;
+}
+#success-popup.show { display: flex; }
+.popup-box {
+  background: var(--surface); border-radius: 22px;
+  padding: 2.5rem 2rem 2rem; text-align: center;
+  max-width: 390px; width: 100%;
+  box-shadow: 0 24px 80px rgba(0,0,0,.3);
+  animation: popIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+.tick-circle {
+  width: 90px; height: 90px; border-radius: 50%;
+  background: var(--success-bg); border: 3px solid var(--success);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.25rem;
+  animation: tickBounce .5s cubic-bezier(.34,1.56,.64,1) .1s both;
+}
+.tick-circle svg { width: 48px; height: 48px; }
+.popup-box h2 { font-size: 21px; font-weight: 800; color: var(--success); margin-bottom: 5px; }
+.popup-name-text { font-size: 16px; color: var(--text); font-weight: 700; margin-bottom: 4px; }
+.popup-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+.popup-photo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid var(--success); margin: 0 auto 12px; display: block; }
+.btn-ok {
+  background: var(--success); color: #fff; border: none;
+  padding: 12px 44px; border-radius: 50px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: var(--font); transition: all .15s; letter-spacing: .02em;
+}
+.btn-ok:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* ─── LOADING OVERLAY ──────────────────────────────────────────────── */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; flex-direction: column; gap: 18px;
+  color: #fff; font-family: var(--font);
+}
+.load-logo { font-size: 48px; animation: pulse 2s ease-in-out infinite; }
+.load-title { font-size: 20px; font-weight: 800; }
+.load-sub { font-size: 13px; color: rgba(255,255,255,.5); }
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(255,255,255,.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.load-progress { width: 200px; height: 3px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; }
+.load-bar { height: 100%; background: var(--primary); border-radius: 3px; animation: loadProgress 3s ease-in-out forwards; }
+
+/* ─── ADMIN LOGIN OVERLAY ──────────────────────────────────────────── */
+#admin-login-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.8);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem;
+}
+#admin-login-overlay.show { display: flex; }
+.login-box {
+  background: var(--surface); padding: 2rem;
+  border-radius: var(--radius); width: 100%; max-width: 350px;
+  box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+}
+.login-box h2 { margin-bottom: 4px; font-size: 21px; font-weight: 800; }
+.login-box .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+.login-box label { display: block; margin-top: 10px; }
+.login-box input { margin-top: 5px; }
+
+/* ─── ANIMATIONS ───────────────────────────────────────────────────── */
+@keyframes fadeIn      { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+@keyframes popIn       { from { transform:scale(.75); opacity:0 } to { transform:scale(1); opacity:1 } }
+@keyframes spin        { to { transform:rotate(360deg) } }
+@keyframes tickBounce  { from { transform:scale(0) } to { transform:scale(1) } }
+@keyframes pulseDot    { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+@keyframes pulse       { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+@keyframes loadProgress{ from{width:0} to{width:100%} }
+
+/* ─── RESPONSIVE ───────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .form-row       { grid-template-columns: 1fr; }
+  .detail-grid    { grid-template-columns: 1fr; }
+  .stats-grid     { grid-template-columns: 1fr 1fr; }
+  .nav button     { font-size: 11px; padding: 8px 6px; }
+  .card           { padding: 1.1rem; }
+  .header h1      { font-size: 16px; }
+  .scan-ring svg  { width: 120px; height: 120px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ LOADING OVERLAY ═══════════════════ -->
+<div id="loading-overlay">
+  <div class="load-logo">🎓</div>
+  <div class="load-title">Face Attendance System</div>
+  <div class="spinner"></div>
+  <div class="load-progress"><div class="load-bar"></div></div>
+  <div class="load-sub">Loading AI face recognition models…</div>
+</div>
+
+<!-- ═══════════════════ ADMIN LOGIN OVERLAY ═══════════════ -->
+<div id="admin-login-overlay">
+  <div class="login-box">
+    <h2>🔒 Admin Login</h2>
+    <p class="login-sub">Restricted area — admin access required</p>
+    <label>Username</label>
+    <input type="text" id="login-user" placeholder="Enter username" autocomplete="username" />
+    <label>Password</label>
+    <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter') verifyAdmin()" />
+    <p id="login-error" style="color:var(--err-text);font-size:12px;display:none;margin-top:10px;font-weight:600;">
+      ❌ Incorrect username or password
+    </p>
+    <div class="actions" style="margin-top:16px;">
+      <button class="btn btn-primary" style="flex:1" onclick="verifyAdmin()">Login</button>
+      <button class="btn btn-secondary" onclick="cancelLogin()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ APP SHELL ═══════════════════════════ -->
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-brand">
+      <div class="brand-icon">🎓</div>
+      <div>
+        <h1>Student Face Attendance</h1>
+        <p>Automatic face recognition — powered by face-api.js</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="admin-badge" id="admin-badge">
+        <span>✓ Admin</span>
+        <button onclick="logoutAdmin()">Logout</button>
+      </div>
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+    </div>
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="nav">
+    <button class="nav-btn" data-target="register"   onclick="handleNavClick('register',this)">📝 Register</button>
+    <button class="nav-btn active" data-target="attendance" onclick="handleNavClick('attendance',this)">📷 Attendance</button>
+    <button class="nav-btn" data-target="students"   onclick="handleNavClick('students',this)">👥 Students</button>
+    <button class="nav-btn" data-target="logs"       onclick="handleNavClick('logs',this)">📋 Logs</button>
+  </div>
+
+  <!-- ═══ TAB: REGISTER ═══ -->
+  <div id="tab-register" class="section">
+    <div class="card">
+      <div class="section-title">📝 Register New Student — Face is captured automatically</div>
+
+      <div class="form-row">
+        <div>
+          <label>Student Name *</label>
+          <input id="r-name" type="text" placeholder="e.g. Ahmed Ali" />
+        </div>
+        <div>
+          <label>Roll Number *</label>
+          <input id="r-roll" type="text" placeholder="e.g. CS-2024-01" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Email Address *</label>
+          <input id="r-email" type="email" placeholder="e.g. student@university.edu" />
+        </div>
+        <div>
+          <label>Department *</label>
+          <select id="r-dept">
+            <option value="">Select Department</option>
+            <option>Computer Science</option>
+            <option>Artificial Intelligence</option>
+            <option>Software Engineering</option>
+            <option>Data Science</option>
+            <option>Information Technology</option>
+            <option>Electrical Engineering</option>
+            <option>Business Administration</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Semester *</label>
+          <select id="r-sem">
+            <option value="">Select Semester</option>
+            <option>1st Semester</option><option>2nd Semester</option>
+            <option>3rd Semester</option><option>4th Semester</option>
+            <option>5th Semester</option><option>6th Semester</option>
+            <option>7th Semester</option><option>8th Semester</option>
+          </select>
+        </div>
+        <div>
+          <label>Class / Section *</label>
+          <input id="r-class" type="text" placeholder="e.g. BSCS-A" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Session</label>
+          <input id="r-session" type="text" placeholder="e.g. 2024-2028" />
+        </div>
+      </div>
+
+      <!-- Camera -->
+      <div id="reg-video-outer" class="video-outer" style="display:none;">
+        <div class="video-wrap">
+          <video id="reg-video" autoplay muted playsinline></video>
+          <canvas id="reg-canvas" class="overlay"></canvas>
+          <div class="scan-ring" id="reg-scan-ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(79,142,247,.2)" stroke-width="4"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--success)" stroke-width="4"
+                stroke-dasharray="327" stroke-dashoffset="327"
+                transform="rotate(-90 60 60)" id="reg-ring-circle"
+                style="transition:stroke-dashoffset .15s linear;"/>
+            </svg>
+          </div>
+          <div class="countdown-overlay" id="reg-countdown"></div>
+          <div class="vid-pill" id="reg-vid-pill">Starting camera…</div>
+        </div>
+      </div>
+
+      <!-- Multi-sample dots -->
+      <div id="reg-samples-wrap" style="display:none;text-align:center;">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">
+          Capturing <strong>3 face samples</strong> for higher accuracy
+        </p>
+        <div class="sample-row">
+          <div class="sample-dot" id="dot-0"></div>
+          <div class="sample-dot" id="dot-1"></div>
+          <div class="sample-dot" id="dot-2"></div>
+        </div>
+      </div>
+
+      <div id="reg-status" class="status-bar info">
+        Fill the form above, then click <strong>Start Camera</strong> — the system will automatically detect and capture your face
+      </div>
+
+      <div class="auto-bar" id="reg-auto-bar" style="display:none;">
+        <div class="pulse-dot"></div>
+        Auto-detect active — face the camera and hold still for 3 seconds
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-reg-cam" onclick="startRegCamera()">📷 Start Camera</button>
+        <button class="btn btn-secondary" id="btn-reg-stop" onclick="stopRegCamera()" style="display:none;">⏹ Stop</button>
+        <button class="btn btn-secondary" id="btn-flip-reg" onclick="flipCamera('reg')" style="display:none;">🔄 Flip Camera</button>
+      </div>
+
+      <div class="capture-preview" id="captured-preview">
+        <img id="cap-img" class="capture-img" alt="Captured face" />
+        <div>
+          <p style="font-size:14px;color:var(--success-text);font-weight:700;">✔ Registration complete!</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:3px;">3 face samples saved for accurate recognition</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: ATTENDANCE ═══ -->
+  <div id="tab-attendance" class="section active">
+    <div id="att-result"></div>
+    <div class="card">
+      <div class="section-title">📷 Automatic Face Attendance — No button required</div>
+
+      <div class="auto-bar" id="att-auto-bar" style="display:none;">
+        <div class="pulse-dot"></div>
+        <span id="att-auto-text">Scanning every 1.5 s — face the camera</span>
+      </div>
+
+      <div id="att-video-outer" class="video-outer" style="display:none;">
+        <div class="video-wrap">
+          <video id="att-video" autoplay muted playsinline></video>
+          <canvas id="att-canvas" class="overlay"></canvas>
+          <div class="scan-ring" id="att-scan-ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(79,142,247,.2)" stroke-width="4"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--primary)" stroke-width="4"
+                stroke-dasharray="327" stroke-dashoffset="327"
+                transform="rotate(-90 60 60)" id="att-ring-circle"
+                style="transition:stroke-dashoffset .4s linear;"/>
+            </svg>
+          </div>
+          <div class="vid-pill" id="att-vid-pill">Initializing…</div>
+        </div>
+      </div>
+
+      <div id="att-status" class="status-bar info">
+        Click <strong>Start Camera</strong> — face detection starts automatically, no buttons needed
+      </div>
+
+      <div class="cam-controls">
+        <button class="btn btn-primary"   id="btn-att-cam"  onclick="startAttCamera()">📷 Start Camera</button>
+        <button class="btn btn-secondary" id="btn-att-stop" onclick="stopAttCamera()" style="display:none;">⏹ Stop</button>
+        <button class="btn btn-secondary" id="btn-flip-att" onclick="flipCamera('att')" style="display:none;">🔄 Flip Camera</button>
+        <button class="btn btn-secondary" id="btn-manual-scan" onclick="manualScan()" style="display:none;">🔍 Scan Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: STUDENTS ═══ -->
+  <div id="tab-students" class="section">
+    <div class="card">
+      <div class="section-title">👥 Registered Students — Admin Only</div>
+      <div class="stats-grid" id="students-stats"></div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="student-search" placeholder="Search by name, roll, email or department…" oninput="renderStudents()" />
+      </div>
+      <div id="students-list"></div>
+      <div class="actions">
+        <button class="btn btn-success" onclick="exportBackupJSON()">💾 Export Backup</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📂 Import Backup</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackupJSON(event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: LOGS ═══ -->
+  <div id="tab-logs" class="section">
+    <div class="card">
+      <div class="section-title">📋 Attendance Log — Admin Only</div>
+      <div class="log-controls">
+        <input type="date" id="log-date" onchange="renderLogs()" />
+        <button class="btn btn-success" onclick="exportCSV()">📥 Export CSV</button>
+        <span class="log-summary" id="log-summary"></span>
+      </div>
+      <div id="att-log"></div>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<!-- SUCCESS POPUP -->
+<div id="success-popup">
+  <div class="popup-box">
+    <div class="tick-circle">
+      <svg viewBox="0 0 52 52" fill="none">
+        <circle cx="26" cy="26" r="25" stroke="var(--success)" stroke-width="2"/>
+        <path d="M14 27 L22 35 L38 18" stroke="var(--success)" stroke-width="4"
+          stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="40" stroke-dashoffset="40" id="tick-path">
+          <animate attributeName="stroke-dashoffset" from="40" to="0" dur=".45s" begin=".15s" fill="freeze"/>
+        </path>
+      </svg>
+    </div>
+    <img id="popup-photo" class="popup-photo" src="" alt="" />
+    <p class="popup-name-text" id="popup-name"></p>
+    <h2 id="popup-title">Done!</h2>
+    <p class="popup-sub" id="popup-detail"></p>
+    <button class="btn-ok" onclick="closeSuccessPopup()">✓ &nbsp; OK</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ═══ EMAILJS INIT ═══════════════════════════════════════════════════ */
+(function(){ emailjs.init('1hT-dm_gY_iltmb9k'); })();
+
+/* ═══ CONFIGURATION ══════════════════════════════════════════════════ */
+const MODEL_URL          = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.2/model';
+const MATCH_THRESHOLD    = 0.45;   // lower = stricter match
+const AUTO_SCAN_MS       = 1500;   // ms between auto attendance scans
+const COUNTDOWN_SECS     = 3;      // seconds countdown before reg capture
+const NUM_SAMPLES        = 3;      // face samples per registration
+const COOLDOWN_MS        = 5000;   // ms cooldown after successful attendance mark
+
+/* ═══ STATE ══════════════════════════════════════════════════════════ */
+let students = [], attLog = [];
+let regStream = null, attStream = null;
+let regRunning = false, attRunning = false;
+let regFacing = 'user', attFacing = 'user';
+
+// Registration auto-capture
+let regSamples = [], regCapturing = false, regCountdownId = null, regCountdownVal = 0;
+
+// Attendance auto-scan
+let attScanId = null, attScanActive = false, scanCooldown = false;
+
+// Admin
+let isAdmin = false, pendingTab = '';
+
+/* ═══ SAFE LOCALSTORAGE ═════════════════════════════════════════════ */
+function lsGet(key, def = '[]') {
+  try { return localStorage.getItem(key) || def; } catch { return def; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); return true; }
+  catch (e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      alert('⚠️ Storage is full!\nPlease export a backup (Students tab) and clear some data.\n\nPhoto thumbnails may not be saved this time.');
+    }
+    return false;
+  }
+}
+
+/* ═══ INIT DATA ══════════════════════════════════════════════════════ */
+try { students = JSON.parse(lsGet('fas_students', '[]')); } catch { students = []; }
+try { attLog   = JSON.parse(lsGet('fas_log',      '[]')); } catch { attLog   = []; }
+
+/* ══════════════════════════════════════════════════
+   ENHANCEMENT 1 — DARK MODE TOGGLE
+══════════════════════════════════════════════════ */
+(function initTheme() {
+  const saved = lsGet('fas_theme', 'light');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.addEventListener('DOMContentLoaded', () => { const b = document.getElementById('theme-btn'); if(b) b.textContent = '☀️'; });
+  }
+})();
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+  lsSet('fas_theme', isDark ? 'light' : 'dark');
+}
+
+/* ══════════════════════════════════════════════════
+   ENHANCEMENT 2 — ADMIN SYSTEM WITH LOGOUT
+══════════════════════════════════════════════════ */
+function handleNavClick(tab, btn) {
+  const restricted = ['register', 'students', 'logs'];
+  if (restricted.includes(tab) && !isAdmin) {
+    pendingTab = tab;
+    document.getElementById('admin-login-overlay').classList.add('show');
+    setTimeout(() => document.getElementById('login-user').focus(), 120);
+    return;
+  }
+  showTab(tab, btn);
+}
+
+function verifyAdmin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === 'admin' && p === 'admin123') {
+    isAdmin = true;
+    document.getElementById('admin-login-overlay').classList.remove('show');
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('admin-badge').classList.add('show');
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    const btn = document.querySelector(`.nav-btn[data-target="${pendingTab}"]`);
+    showTab(pendingTab, btn);
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function cancelLogin() {
+  document.getElementById('admin-login-overlay').classList.remove('show');
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+function logoutAdmin() {
+  isAdmin = false;
+  document.getElementById('admin-badge').classList.remove('show');
+  const btn = document.querySelector('.nav-btn[data-target="attendance"]');
+  showTab('attendance', btn);
+}
+
+/* ═══ TAB SWITCHING ══════════════════════════════════════════════════ */
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'students') renderStudents();
+  if (name === 'logs')     renderLogs();
+  if (name === 'attendance' && !attStream) setTimeout(startAttCamera, 350);
+}
+
+/* ═══ MODEL LOADING ══════════════════════════════════════════════════ */
+async function loadModels() {
+  try {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    document.getElementById('loading-overlay').style.display = 'none';
+    // Auto-start attendance camera after models load
+    setTimeout(startAttCamera, 600);
+  } catch(e) {
+    document.getElementById('loading-overlay').innerHTML = `
+      <div style="text-align:center;padding:2rem;max-width:420px;color:#fff">
+        <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+        <h2 style="font-size:20px;margin-bottom:10px">Models failed to load</h2>
+        <p style="color:rgba(255,255,255,.6);font-size:14px;margin-bottom:20px">
+          Check your internet connection and try again.<br>
+          <small style="opacity:.6">${e.message}</small>
+        </p>
+        <button onclick="location.reload()" style="padding:11px 28px;border-radius:9px;border:none;
+          background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+          🔄 Reload Page
+        </button>
+      </div>`;
+  }
+}
+
+/* ═══ HELPERS ════════════════════════════════════════════════════════ */
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'status-bar ' + type;
+  el.innerHTML = msg;
+}
+
+function setPill(id, msg, cls = '') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'vid-pill' + (cls ? ' ' + cls : '');
+}
+
+function drawCorners(ctx, box, color, len = 18) {
+  const { x, y, width: w, height: h } = box;
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  [[x,y,x+len,y],[x,y,x,y+len],[x+w,y,x+w-len,y],[x+w,y,x+w,y+len],
+   [x,y+h,x+len,y+h],[x,y+h,x,y+h-len],[x+w,y+h,x+w-len,y+h],[x+w,y+h,x+w,y+h-len]]
+  .forEach(([x1,y1,x2,y2]) => { ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); });
+}
+
+/* ══════════════════════════════════════════════════
+   ENHANCEMENT 3 — CAMERA FLIP (Front / Rear)
+══════════════════════════════════════════════════ */
+function flipCamera(mode) {
+  if (mode === 'reg') { regFacing = regFacing === 'user' ? 'environment' : 'user'; startRegCamera(true); }
+  else                { attFacing = attFacing === 'user' ? 'environment' : 'user'; startAttCamera(true); }
+}
+
+/* ══════════════════════════════════════════════════
+   REGISTER — AUTO FACE CAPTURE
+   Enhancement 4: 3-sample multi-angle capture
+══════════════════════════════════════════════════ */
+async function startRegCamera(flip = false) {
+  try {
+    if (regStream) regStream.getTracks().forEach(t => t.stop());
+    regStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: regFacing, width:{ideal:640}, height:{ideal:480} }
+    });
+    const v = document.getElementById('reg-video');
+    v.srcObject = regStream; await v.play();
+
+    document.getElementById('reg-video-outer').style.display = 'block';
+    document.getElementById('reg-samples-wrap').style.display = 'block';
+    document.getElementById('btn-reg-stop').style.display = 'inline-flex';
+    document.getElementById('btn-flip-reg').style.display = 'inline-flex';
+    document.getElementById('btn-reg-cam').style.display = 'none';
+    document.getElementById('reg-auto-bar').style.display = 'flex';
+
+    regSamples = []; regCapturing = false;
+    updateSampleDots();
+    setStatus('reg-status', 'info', 'Camera active — hold your face steady. Countdown will start automatically when face is detected');
+    setPill('reg-vid-pill', 'Searching for face…');
+
+    if (!regRunning) startRegLoop();
+  } catch(e) {
+    setStatus('reg-status', 'error', '⚠️ Camera access denied: ' + e.message);
+  }
+}
+
+function stopRegCamera() {
+  regRunning = false;
+  clearCountdown();
+  if (regStream) { regStream.getTracks().forEach(t => t.stop()); regStream = null; }
+  document.getElementById('reg-video-outer').style.display = 'none';
+  document.getElementById('reg-samples-wrap').style.display = 'none';
+  document.getElementById('btn-reg-stop').style.display = 'none';
+  document.getElementById('btn-flip-reg').style.display = 'none';
+  document.getElementById('btn-reg-cam').style.display = 'inline-flex';
+  document.getElementById('reg-auto-bar').style.display = 'none';
+  setStatus('reg-status', 'info', 'Fill the form above, then click <strong>Start Camera</strong>');
+}
+
+async function startRegLoop() {
+  if (regRunning) return;
+  regRunning = true;
+  const v = document.getElementById('reg-video');
+  const c = document.getElementById('reg-canvas');
+
+  const loop = async () => {
+    if (!regRunning) return;
+    c.width = v.videoWidth || 480; c.height = v.videoHeight || 360;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    const det = await faceapi
+      .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+      .withFaceLandmarks();
+
+    if (det) {
+      const box = det.detection.box;
+      ctx.strokeStyle = 'rgba(79,142,247,.35)'; ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = 'rgba(79,142,247,.06)';
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      drawCorners(ctx, box, '#4f8ef7');
+
+      document.getElementById('reg-scan-ring').classList.add('active');
+      if (!regCapturing && regSamples.length < NUM_SAMPLES) startCountdown();
+    } else {
+      document.getElementById('reg-scan-ring').classList.remove('active');
+      clearCountdown();
+      setPill('reg-vid-pill', 'Searching for face…');
+    }
+    setTimeout(loop, 200);
+  };
+  loop();
+}
+
+/* — Countdown before capture — */
+function startCountdown() {
+  if (regCapturing) return;
+  regCapturing = true;
+  regCountdownVal = COUNTDOWN_SECS;
+  const cd  = document.getElementById('reg-countdown');
+  const ring = document.getElementById('reg-ring-circle');
+  const CIRC = 327;
+
+  const tick = () => {
+    if (!regCapturing) return;
+    cd.textContent = regCountdownVal;
+    cd.classList.add('show');
+    const pct = (COUNTDOWN_SECS - regCountdownVal) / COUNTDOWN_SECS;
+    if (ring) ring.style.strokeDashoffset = CIRC - CIRC * pct;
+    if (regCountdownVal <= 0) {
+      cd.classList.remove('show'); cd.textContent = '';
+      if (ring) ring.style.strokeDashoffset = CIRC;
+      captureOneSample();
+      return;
+    }
+    regCountdownVal--;
+    regCountdownId = setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+function clearCountdown() {
+  regCapturing = false; regCountdownVal = 0;
+  if (regCountdownId) { clearTimeout(regCountdownId); regCountdownId = null; }
+  const cd = document.getElementById('reg-countdown');
+  if (cd) { cd.classList.remove('show'); cd.textContent = ''; }
+  const ring = document.getElementById('reg-ring-circle');
+  if (ring) ring.style.strokeDashoffset = 327;
+}
+
+async function captureOneSample() {
+  /* validate form */
+  const name = document.getElementById('r-name').value.trim();
+  const roll = document.getElementById('r-roll').value.trim();
+  const email= document.getElementById('r-email').value.trim();
+  const dept = document.getElementById('r-dept').value;
+  const sem  = document.getElementById('r-sem').value;
+  const cls  = document.getElementById('r-class').value.trim();
+  const sess = document.getElementById('r-session').value.trim() || '2024-2028';
+
+  if (!name||!roll||!email||!dept||!sem||!cls) {
+    setStatus('reg-status','error','⚠️ Please fill all required fields: Name, Roll, Email, Department, Semester, Class');
+    clearCountdown(); return;
+  }
+  if (students.find(s => s.roll === roll)) {
+    setStatus('reg-status','error','⚠️ This Roll Number is already registered!');
+    clearCountdown(); return;
+  }
+
+  const v = document.getElementById('reg-video');
+  const det = await faceapi
+    .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks().withFaceDescriptor();
+
+  if (!det) {
+    setStatus('reg-status','warning','⚠️ Face not detected — please stay in front of the camera');
+    clearCountdown(); return;
+  }
+
+  regSamples.push(Array.from(det.descriptor));
+  updateSampleDots();
+
+  if (regSamples.length >= NUM_SAMPLES) {
+    await finalizeRegistration(name, roll, email, dept, sem, cls, sess, v);
+  } else {
+    setStatus('reg-status','info', `✅ Sample ${regSamples.length}/${NUM_SAMPLES} captured — hold still for next sample`);
+    regCapturing = false;
+    setTimeout(() => { if (regRunning) startCountdown(); }, 900);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 4 cont.: AVERAGE MULTI-SAMPLE DESCRIPTOR
+══════════════════════════════════════════════════ */
+function avgDescriptors(samples) {
+  const n = samples[0].length;
+  const avg = new Array(n).fill(0);
+  samples.forEach(d => d.forEach((v,i) => avg[i] += v));
+  return avg.map(v => v / samples.length);
+}
+
+async function finalizeRegistration(name,roll,email,dept,sem,cls,sess,v) {
+  regRunning = false;
+  const tmp = document.createElement('canvas');
+  tmp.width = v.videoWidth; tmp.height = v.videoHeight;
+  tmp.getContext('2d').drawImage(v,0,0);
+
+  const student = {
+    id: Date.now(), name, roll, email, dept, sem, cls, sess,
+    descriptor:  avgDescriptors(regSamples),
+    descriptors: regSamples,
+    photo:       tmp.toDataURL('image/jpeg', 0.5),
+    registeredAt: new Date().toLocaleString()
+  };
+  students.push(student);
+  const ok = lsSet('fas_students', JSON.stringify(students));
+  if (!ok) {
+    // Retry without photo to avoid quota issues
+    student.photo = null;
+    lsSet('fas_students', JSON.stringify(students));
+  }
+
+  document.getElementById('cap-img').src = student.photo || '';
+  document.getElementById('captured-preview').style.display = 'flex';
+  setStatus('reg-status','success', `🎉 ${name} registered with ${NUM_SAMPLES} face samples — excellent accuracy!`);
+  showSuccessPopup(student, 'register');
+  stopRegCamera();
+  ['r-name','r-roll','r-email','r-class','r-session'].forEach(id => document.getElementById(id).value = '');
+  ['r-dept','r-sem'].forEach(id => document.getElementById(id).value = '');
+  regSamples = []; updateSampleDots();
+}
+
+function updateSampleDots() {
+  for (let i=0; i<NUM_SAMPLES; i++) {
+    const d = document.getElementById(`dot-${i}`);
+    if (!d) continue;
+    d.className = 'sample-dot' + (i < regSamples.length ? ' done' : i === regSamples.length ? ' active' : '');
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   ATTENDANCE — AUTO SCAN
+   Enhancement 5: Continuous auto-recognition, no button
+══════════════════════════════════════════════════ */
+async function startAttCamera(flip = false) {
+  try {
+    if (attStream) attStream.getTracks().forEach(t => t.stop());
+    attStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: attFacing, width:{ideal:640}, height:{ideal:480} }
+    });
+    const v = document.getElementById('att-video');
+    v.srcObject = attStream; await v.play();
+
+    document.getElementById('att-video-outer').style.display = 'block';
+    document.getElementById('btn-att-stop').style.display = 'inline-flex';
+    document.getElementById('btn-flip-att').style.display = 'inline-flex';
+    document.getElementById('btn-manual-scan').style.display = 'inline-flex';
+    document.getElementById('btn-att-cam').style.display = 'none';
+    document.getElementById('att-auto-bar').style.display = 'flex';
+
+    setStatus('att-status','info','🤖 Auto-scan is active — stand in front of the camera, attendance marks automatically');
+    setPill('att-vid-pill', 'Searching…');
+
+    attScanActive = true; scanCooldown = false;
+    if (!attRunning) startAttLoop();
+    scheduleAutoScan();
+  } catch(e) {
+    setStatus('att-status','error','⚠️ Camera access denied: ' + e.message);
+    document.getElementById('att-video-outer').style.display = 'none';
+  }
+}
+
+function stopAttCamera() {
+  attRunning = false; attScanActive = false;
+  if (attScanId) clearTimeout(attScanId);
+  if (attStream) { attStream.getTracks().forEach(t => t.stop()); attStream = null; }
+  document.getElementById('att-video-outer').style.display = 'none';
+  document.getElementById('btn-att-stop').style.display = 'none';
+  document.getElementById('btn-flip-att').style.display = 'none';
+  document.getElementById('btn-manual-scan').style.display = 'none';
+  document.getElementById('btn-att-cam').style.display = 'inline-flex';
+  document.getElementById('att-auto-bar').style.display = 'none';
+  setStatus('att-status','info','Click <strong>Start Camera</strong> to begin attendance scanning');
+}
+
+async function startAttLoop() {
+  if (attRunning) return;
+  attRunning = true;
+  const v = document.getElementById('att-video');
+  const c = document.getElementById('att-canvas');
+
+  const loop = async () => {
+    if (!attRunning) return;
+    c.width = v.videoWidth||480; c.height = v.videoHeight||360;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+
+    const det = await faceapi
+      .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+      .withFaceLandmarks();
+
+    if (det) {
+      const box = det.detection.box;
+      const color = scanCooldown ? 'var(--success)' : 'var(--primary)';
+      const hexColor = scanCooldown ? '#10b981' : '#4f8ef7';
+      ctx.strokeStyle = hexColor + '55'; ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = hexColor + '11';
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      drawCorners(ctx, box, hexColor);
+      document.getElementById('att-scan-ring').classList.add('active');
+      if (!scanCooldown) setPill('att-vid-pill', 'Face detected — scanning…');
+    } else {
+      document.getElementById('att-scan-ring').classList.remove('active');
+      if (!scanCooldown) setPill('att-vid-pill', 'Searching for face…');
+    }
+    setTimeout(loop, 150);
+  };
+  loop();
+}
+
+function scheduleAutoScan() {
+  if (!attScanActive) return;
+  attScanId = setTimeout(async () => {
+    if (attScanActive && !scanCooldown) await recognizeFace();
+    scheduleAutoScan();
+  }, AUTO_SCAN_MS);
+}
+
+async function manualScan() {
+  if (scanCooldown) { setStatus('att-status','warning','⏳ Please wait for cooldown before scanning again'); return; }
+  await recognizeFace();
+}
+
+/* ══════════════════════════════════════════════════
+   FACE RECOGNITION CORE
+   Enhancement 4: Checks all raw descriptors per student
+══════════════════════════════════════════════════ */
+async function recognizeFace() {
+  if (students.length === 0) return;
+  const v = document.getElementById('att-video');
+  if (!v || !attStream) return;
+
+  const det = await faceapi
+    .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks().withFaceDescriptor();
+  if (!det) return;
+
+  const qd = det.descriptor;
+  let best = null, bestDist = 999;
+
+  students.forEach(s => {
+    // Match against averaged descriptor
+    let d = faceapi.euclideanDistance(qd, new Float32Array(s.descriptor));
+    // Also match against each individual raw sample
+    if (s.descriptors) {
+      s.descriptors.forEach(raw => {
+        const rd = faceapi.euclideanDistance(qd, new Float32Array(raw));
+        if (rd < d) d = rd;
+      });
+    }
+    if (d < bestDist) { bestDist = d; best = s; }
+  });
+
+  if (bestDist < MATCH_THRESHOLD) {
+    const todayKey = new Date().toDateString() + '-' + best.roll;
+
+    if (attLog.find(l => l.key === todayKey)) {
+      showAttResult(best, '⚠️ Already marked today', 'dup', bestDist);
+      setStatus('att-status','warning', `${best.name} — attendance already recorded today`);
+      setPill('att-vid-pill', `Already marked: ${best.name}`, 'warn');
+      triggerCooldown(4000);
+      return;
+    }
+
+    const now = new Date();
+    const entry = {
+      key: todayKey, id: best.id,
+      name: best.name, roll: best.roll, dept: best.dept,
+      sem: best.sem, cls: best.cls, sess: best.sess,
+      time: now.toLocaleTimeString(),
+      date: now.toLocaleDateString(),
+      dist: bestDist.toFixed(3),
+      conf: Math.round((1 - bestDist) * 100)
+    };
+    attLog.push(entry);
+    lsSet('fas_log', JSON.stringify(attLog));
+
+    showAttResult(best, '✅ Attendance Marked!', 'success', bestDist);
+    setStatus('att-status','success', `✅ ${best.name} — marked present at ${entry.time} (${entry.conf}% confidence)`);
+    setPill('att-vid-pill', `✅ ${best.name}`, 'ok');
+    triggerCooldown(COOLDOWN_MS);
+
+    if (best.email) sendEmail(best.email, best.name, entry.time, entry.date);
+  }
+}
+
+function triggerCooldown(ms) {
+  scanCooldown = true;
+  setTimeout(() => {
+    scanCooldown = false;
+    if (attScanActive) setPill('att-vid-pill', 'Scanning resumed…');
+  }, ms);
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 6 — CONFIDENCE % in attendance result
+══════════════════════════════════════════════════ */
+function showAttResult(s, msg, type, dist) {
+  const isSuccess = type === 'success';
+  const isDup = type === 'dup';
+  const boxClass = isSuccess ? 'success-box' : isDup ? 'dup-box' : 'fail-box';
+  const titleCol = isSuccess ? 'var(--success-text)' : isDup ? 'var(--primary)' : 'var(--warn-text)';
+  const conf = Math.round((1 - dist) * 100);
+  const confColor = conf > 75 ? 'var(--success)' : conf > 55 ? 'var(--warn-text)' : 'var(--err-text)';
+  const photo = s.photo ? `<img src="${s.photo}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid ${isSuccess?'var(--success)':'var(--primary)'};margin-bottom:12px;">` : `<div style="font-size:44px;margin-bottom:10px">${isSuccess?'✅':isDup?'⚠️':'❌'}</div>`;
+
+  document.getElementById('att-result').innerHTML = `
+    <div class="big-result ${boxClass}">
+      ${photo}
+      <h2 style="color:${titleCol}">${msg}</h2>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="dlabel">Name</div><div class="dval">${s.name}</div></div>
+        <div class="detail-item"><div class="dlabel">Roll Number</div><div class="dval">${s.roll}</div></div>
+        <div class="detail-item"><div class="dlabel">Department</div><div class="dval">${s.dept}</div></div>
+        <div class="detail-item"><div class="dlabel">Confidence</div><div class="dval" style="color:${confColor}">${conf}%</div></div>
+        <div class="detail-item"><div class="dlabel">Class</div><div class="dval">${s.cls}</div></div>
+        <div class="detail-item"><div class="dlabel">Time</div><div class="dval">${new Date().toLocaleTimeString()}</div></div>
+      </div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 7 — STUDENTS with SEARCH + STATS
+══════════════════════════════════════════════════ */
+function renderStudents() {
+  const q = (document.getElementById('student-search')?.value || '').toLowerCase().trim();
+  const today = new Date().toLocaleDateString();
+  const presentToday = new Set(attLog.filter(l => l.date === today).map(l => l.roll));
+
+  const filtered = students.filter(s =>
+    !q ||
+    s.name.toLowerCase().includes(q) ||
+    s.roll.toLowerCase().includes(q) ||
+    (s.dept||'').toLowerCase().includes(q) ||
+    (s.email||'').toLowerCase().includes(q)
+  );
+
+  // Stats
+  const statsEl = document.getElementById('students-stats');
+  if (statsEl) statsEl.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--primary)">${students.length}</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--success)">${presentToday.size}</div>
+      <div class="stat-label">Present Today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--err-text)">${Math.max(0,students.length-presentToday.size)}</div>
+      <div class="stat-label">Absent Today</div>
+    </div>`;
+
+  const el = document.getElementById('students-list');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="no-data"><div class="nd-icon">${q ? '🔍' : '👤'}</div>${q ? `No students match "<strong>${q}</strong>"` : 'No students registered yet<br><small>Go to Register tab to add students</small>'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(s => {
+    const isPresent = presentToday.has(s.roll);
+    return `
+    <div class="student-card">
+      ${s.photo
+        ? `<img src="${s.photo}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="${s.name}">`
+        : `<div class="avatar">${s.name.slice(0,2).toUpperCase()}</div>`}
+      <div class="student-info">
+        <strong>${s.name}</strong>
+        <div class="meta">${s.roll} &middot; ${s.email}</div>
+        <div class="sub">${s.dept} &middot; ${s.cls} &middot; ${s.sem}</div>
+      </div>
+      <span class="badge ${isPresent ? 'badge-success' : 'badge-muted'}">${isPresent ? '✓ Present' : 'Absent'}</span>
+      <button class="btn btn-danger" style="padding:5px 11px;font-size:12px" onclick="deleteStudent(${s.id})">🗑</button>
+    </div>`; }).join('');
+}
+
+function deleteStudent(id) {
+  const s = students.find(st => st.id === id);
+  if (!s) return;
+  if (!confirm(`Delete "${s.name}" (${s.roll})?\nThis action cannot be undone.`)) return;
+  students = students.filter(st => st.id !== id);
+  lsSet('fas_students', JSON.stringify(students));
+  renderStudents();
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 8 — HISTORICAL LOG + DATE PICKER
+══════════════════════════════════════════════════ */
+function renderLogs() {
+  const dateEl = document.getElementById('log-date');
+  if (!dateEl.value) {
+    const d = new Date();
+    dateEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const selDate = new Date(dateEl.value + 'T00:00:00').toLocaleDateString();
+  const logs = attLog.filter(l => l.date === selDate);
+  document.getElementById('log-summary').textContent = `${logs.length} present on ${selDate}`;
+  const el = document.getElementById('att-log');
+
+  if (!logs.length) {
+    el.innerHTML = `<div class="no-data"><div class="nd-icon">📋</div>No attendance recorded for ${selDate}<br><small>Try a different date or mark attendance in the Attendance tab</small></div>`;
+    return;
+  }
+  el.innerHTML = logs.map((l,i) => {
+    const stu = students.find(s => s.roll === l.roll);
+    const thumb = stu?.photo
+      ? `<img src="${stu.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+      : `<div class="avatar" style="width:36px;height:36px;font-size:11px;flex-shrink:0;">${l.name.slice(0,2).toUpperCase()}</div>`;
+    return `
+    <div class="log-entry">
+      <span style="color:var(--text-faint);min-width:22px;font-size:12px">${i+1}.</span>
+      <span class="log-time">${l.time}</span>
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <strong style="font-size:13px">${l.name}</strong>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:6px">${l.roll}</span>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:1px">${l.dept} &middot; ${l.cls}</div>
+      </div>
+      ${l.conf ? `<span style="font-size:12px;font-weight:700;color:var(--success)">${l.conf}%</span>` : ''}
+      <span class="badge badge-success">✓ Present</span>
+    </div>`; }).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 9 — CSV EXPORT
+══════════════════════════════════════════════════ */
+function exportCSV() {
+  const dateEl = document.getElementById('log-date');
+  const selDate = dateEl.value
+    ? new Date(dateEl.value + 'T00:00:00').toLocaleDateString()
+    : new Date().toLocaleDateString();
+  const logs = attLog.filter(l => l.date === selDate);
+  if (!logs.length) { alert('No records found for the selected date.'); return; }
+  const headers = ['Date','Time','Name','Roll Number','Department','Semester','Class','Session','Confidence'];
+  const rows = logs.map(l => [l.date,l.time,l.name,l.roll,l.dept,l.sem,l.cls,l.sess||'',l.conf?l.conf+'%':'']);
+  const csv = [headers,...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlFile(`attendance_${selDate.replace(/\//g,'-')}.csv`, csv, 'text/csv');
+}
+
+/* ══════════════════════════════════════════════════
+   Enhancement 10 — BACKUP EXPORT / IMPORT (JSON)
+══════════════════════════════════════════════════ */
+function exportBackupJSON() {
+  const data = JSON.stringify({ students, attLog, exportedAt: new Date().toISOString() }, null, 2);
+  dlFile(`fas_backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
+}
+
+function importBackupJSON(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.students) { students = data.students; lsSet('fas_students', JSON.stringify(students)); }
+      if (data.attLog)   { attLog = data.attLog;   lsSet('fas_log',      JSON.stringify(attLog)); }
+      alert(`✅ Import successful!\n${students.length} students loaded.\n${attLog.length} attendance records loaded.`);
+      renderStudents();
+    } catch(err) { alert('❌ Invalid backup file: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function dlFile(name, content, type) {
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([content],{type})),
+    download: name
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ═══ EMAIL ══════════════════════════════════════════════════════════ */
+function sendEmail(to, name, time, date) {
+  emailjs.send('service_cwa2b3q','template_azz34by',{
+    to_email: to, to_name: name,
+    message: `Your attendance was marked on ${date} at ${time}.`
+  }).then(r => console.log('✅ Email sent', r.status))
+    .catch(e => console.warn('❌ Email failed', e));
+}
+
+/* ═══ SUCCESS POPUP ══════════════════════════════════════════════════ */
+function showSuccessPopup(student, type) {
+  document.getElementById('popup-name').textContent = student.name;
+  document.getElementById('popup-title').textContent = type === 'register' ? '🎉 Registration Complete!' : '✅ Attendance Marked!';
+  document.getElementById('popup-detail').textContent = student.roll + ' · ' + (student.email || student.dept || '');
+  const ph = document.getElementById('popup-photo');
+  if (student.photo) { ph.src = student.photo; ph.style.display = 'block'; }
+  else { ph.style.display = 'none'; }
+  // Re-animate tick
+  const p = document.getElementById('tick-path');
+  if (p) { const c = p.cloneNode(true); p.parentNode.replaceChild(c, p); }
+  document.getElementById('success-popup').classList.add('show');
+}
+
+function closeSuccessPopup() {
+  document.getElementById('success-popup').classList.remove('show');
+}
+
+/* ─── Global event listeners ────────────────────────── */
+document.addEventListener('click', e => {
+  if (e.target === document.getElementById('success-popup')) closeSuccessPopup();
+  if (e.target === document.getElementById('admin-login-overlay')) cancelLogin();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSuccessPopup(); cancelLogin(); }
+  if (e.key === ' ' && attScanActive && !scanCooldown && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault(); manualScan();
+  }
+});
+
+/* ═══ INIT ═══════════════════════════════════════════════════════════ */
+loadModels();
+</script>
+</body>
+</html>

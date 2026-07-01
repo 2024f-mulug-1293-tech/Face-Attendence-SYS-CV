@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI-powered face recognition attendance system with real-time cloud sync">
+<meta name="theme-color" content="#4f8ef7">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👨‍🎓</text></svg>">
+<title>Face Attendance System</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+</head>
+<body>
+
+<!-- ── LOADING OVERLAY ──────────────────────────────────────── -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-title">🤖 Face Attendance System</div>
+  <div class="loading-status" id="loading-status">Initializing…</div>
+  <div class="loading-progress">
+    <div class="loading-progress-fill" id="load-progress-bar" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- ── CONFIRM DIALOG ───────────────────────────────────────── -->
+<div class="modal-overlay" id="confirm-dialog">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-title" id="confirm-title">Confirm</div>
+    <div class="modal-sub"   id="confirm-message">Are you sure?</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost"    id="confirm-cancel" onclick="UI.confirmResolve(false)">Cancel</button>
+      <button class="btn btn-primary"  id="confirm-ok"     onclick="UI.confirmResolve(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SESSION SETUP MODAL ──────────────────────────────────── -->
+<div class="modal-overlay" id="session-modal">
+  <div class="modal-box">
+    <div class="modal-title">📅 Open Attendance Session</div>
+    <div class="modal-sub">Choose the course, date, and time for this attendance session.</div>
+    <div class="form-group">
+      <label class="form-label">Course / Subject *</label>
+      <select class="form-control" id="modal-course-select">
+        <option value="">— Select Course —</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input type="date" class="form-control" id="modal-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Room / Lab</label>
+        <select class="form-control" id="modal-room">
+          <option value="">— Select Room —</option>
+          <optgroup label="Labs">
+            <option value="CS Lab 1">CS Lab 1</option>
+            <option value="CS Lab 2">CS Lab 2</option>
+            <option value="CS Lab 3">CS Lab 3</option>
+            <option value="IT Lab 1">IT Lab 1</option>
+            <option value="AI Lab">AI Lab</option>
+            <option value="Hardware Lab">Hardware Lab</option>
+          </optgroup>
+          <optgroup label="Lecture Rooms">
+            <option value="Room 101">Room 101</option>
+            <option value="Room 102">Room 102</option>
+            <option value="Room 103">Room 103</option>
+            <option value="Room 201">Room 201</option>
+            <option value="Room 202">Room 202</option>
+            <option value="Room 203">Room 203</option>
+            <option value="Room 301">Room 301</option>
+            <option value="Room 302">Room 302</option>
+          </optgroup>
+          <optgroup label="Halls">
+            <option value="Main Auditorium">Main Auditorium</option>
+            <option value="Seminar Hall A">Seminar Hall A</option>
+            <option value="Seminar Hall B">Seminar Hall B</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Start Time *</label>
+        <input type="time" class="form-control" id="modal-start-time">
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Time</label>
+        <input type="time" class="form-control" id="modal-end-time">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="UI.hideModal('session-modal')">Cancel</button>
+      <button class="btn btn-primary" id="btn-open-session">🚀 Open Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── STUDENT HISTORY MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="student-history-modal">
+  <div class="modal-box" style="max-width:540px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <img id="history-student-photo" src="" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--c-border)">
+      <div>
+        <div class="modal-title" id="history-student-name" style="margin:0"></div>
+        <div class="text-muted text-sm" id="history-student-roll"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="UI.hideModal('student-history-modal')" style="margin-left:auto">✕ Close</button>
+    </div>
+    <div id="history-summary"></div>
+    <div style="margin-top:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Recent Attendance</div>
+      <div id="history-timeline" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ──────────────────────────────────────────────── -->
+<div class="app-container" id="app-container" hidden>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="sidebar-logo-icon">🎓</span>
+      <div>
+        <div class="sidebar-logo-text">FaceAttend</div>
+        <div class="sidebar-logo-sub" id="sidebar-institution">Minhaj University Lahore</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-tab="dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
+      <div class="nav-item" data-tab="attendance"><span class="nav-icon">📷</span><span class="nav-label">Attendance</span></div>
+      <div class="nav-item" data-tab="register"><span class="nav-icon">📝</span><span class="nav-label">Register Student</span></div>
+      <div class="nav-item" data-tab="students"><span class="nav-icon">👥</span><span class="nav-label">Students</span></div>
+      <div class="nav-item" data-tab="courses"><span class="nav-icon">📚</span><span class="nav-label">Courses</span></div>
+      <div class="nav-item" data-tab="reports"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></div>
+      <div class="nav-item" data-tab="admin" id="nav-admin" hidden><span class="nav-icon">⚙️</span><span class="nav-label">Admin</span><span class="nav-badge" id="pending-badge" hidden>0</span></div>
+    </div>
+
+    <div class="sidebar-user">
+      <img class="sidebar-avatar" id="sidebar-avatar" src="" alt="">
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebar-user-name">…</div>
+        <div class="sidebar-user-role" id="sidebar-user-role">…</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+      <div class="topbar-institution" id="topbar-institution">Face Attendance System</div>
+      <div class="topbar-clock" id="topbar-clock"></div>
+      <button class="topbar-btn" id="btn-theme" title="Toggle theme">🌙</button>
+
+      <div class="user-dropdown-wrap">
+        <button class="topbar-btn" id="btn-user-menu">
+          <img id="topbar-avatar" src="" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle">
+        </button>
+        <div class="user-dropdown" id="user-dropdown">
+          <div class="dropdown-item" onclick="handleSignOut()">🚪<span>Sign Out</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-area">
+
+      <!-- ═══════════════ DASHBOARD ═══════════════ -->
+      <div class="tab-panel active" id="tab-dashboard">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Dashboard</div>
+            <div class="section-sub">Real-time overview</div>
+          </div>
+          <button class="btn btn-primary" onclick="openSessionModal()">📅 New Session</button>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card" style="--stat-color:var(--c-primary)">
+            <div class="stat-num" id="stat-total-students">—</div>
+            <div class="stat-label">Total Students</div>
+            <span class="stat-icon">👥</span>
+          </div>
+          <div class="stat-card" style="--stat-color:var(--c-success)">
+            <div class="stat-num" id="stat-present-today">—</div>
+            <div class="stat-label">Present Today</div>
+            <span class="stat-icon">✅</span>
+          </div>
+          <div class="stat-card" style="--stat-color:var(--c-warning)">
+            <div class="stat-num" id="stat-active-sessions">—</div>
+            <div class="stat-label">Active Sessions</div>
+            <span class="stat-icon">📹</span>
+          </div>
+          <div class="stat-card" style="--stat-color:var(--c-purple)">
+            <div class="stat-num" id="stat-courses">—</div>
+            <div class="stat-label">Courses</div>
+            <span class="stat-icon">📚</span>
+          </div>
+        </div>
+
+        <div class="grid-layout-half" style="gap:16px">
+          <div class="card">
+            <div class="card-title">🟢 Active Sessions</div>
+            <div id="active-sessions-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🕐 Recent Activity</div>
+            <div id="recent-activity"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ATTENDANCE ═══════════════ -->
+      <div class="tab-panel" id="tab-attendance">
+        <div class="section-header">
+          <div>
+            <div class="section-title">📷 Attendance</div>
+            <div class="section-sub" id="att-session-subtitle">No active session</div>
+          </div>
+        </div>
+
+        <!-- Session info (when open) -->
+        <div id="att-session-info" hidden>
+          <div class="session-info-card">
+            <div class="session-live-dot"></div>
+            <div class="session-details">
+              <div class="session-course" id="session-course-name">—</div>
+              <div class="session-meta"  id="session-date-time">—</div>
+            </div>
+            <div style="text-align:center">
+              <div class="session-count" id="session-present-count">0</div>
+              <div class="session-count-label">Present</div>
+            </div>
+            <button class="btn btn-danger btn-sm" id="btn-close-session">⏹ Close Session</button>
+          </div>
+        </div>
+
+        <!-- No session -->
+        <div id="att-no-session">
+          <div class="card" style="text-align:center;padding:40px">
+            <div style="font-size:52px;margin-bottom:12px">📅</div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:6px">No Active Session</div>
+            <div style="font-size:13px;color:var(--c-text2);margin-bottom:20px">Open a session to start marking attendance</div>
+            <button class="btn btn-primary" onclick="openSessionModal()">📅 Open New Session</button>
+          </div>
+        </div>
+
+        <!-- Camera + scan area -->
+        <div id="att-camera-area" hidden style="margin-top:16px">
+          <div class="grid-layout-half" style="align-items:start">
+            <div>
+              <!-- Video -->
+              <div class="video-outer">
+                <video id="att-video" autoplay muted playsinline></video>
+                <canvas id="att-canvas" class="overlay"></canvas>
+                <div class="scan-ring"></div>
+                <div class="vid-status-pill scanning" id="att-vid-pill">● Scanning…</div>
+              </div>
+              <!-- Quality bar -->
+              <div style="margin-top:8px;font-size:11px;color:var(--c-text2)" id="att-quality-text">Frame quality: initializing…</div>
+              <div class="quality-bar"><div class="quality-fill" id="att-quality-fill" style="width:0%;background:var(--c-success)"></div></div>
+              <div class="auto-scan-bar animate" id="att-auto-bar"></div>
+              <!-- Controls -->
+              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" id="btn-flip-att" onclick="flipAttCamera()">🔄 Flip</button>
+                <button class="btn btn-ghost btn-sm"     id="btn-manual-scan" onclick="manualScan()">🔍 Scan Now</button>
+                <button class="btn btn-danger btn-sm"    id="btn-att-stop"    onclick="stopAttCamera()">⏹ Stop Camera</button>
+              </div>
+            </div>
+
+            <!-- Present list -->
+            <div>
+              <div style="font-size:13px;font-weight:700;margin-bottom:8px">✅ Marked Present</div>
+              <div id="att-present-list" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+                <div style="color:var(--c-text2);font-size:13px;text-align:center;padding:20px">Waiting for first scan…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Last result -->
+          <div id="att-last-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ REGISTER ═══════════════ -->
+      <div class="tab-panel" id="tab-register">
+        <div class="section-header">
+          <div class="section-title">📝 Register New Student</div>
+          <div class="section-sub">Fill form, then face the camera</div>
+        </div>
+
+        <div class="grid-layout-half" style="align-items:start">
+          <!-- Form -->
+          <div class="card">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="r-name" placeholder="Ahmed Ali">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Roll Number *</label>
+                <input type="text" class="form-control" id="r-roll" placeholder="CS-2024-01">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" class="form-control" id="r-email" placeholder="student@university.edu">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Department *</label>
+                <select class="form-control" id="r-dept">
+                  <option value="">— Select Department —</option>
+                  <optgroup label="Computer Related">
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                    <option value="Information Technology">Information Technology</option>
+                    <option value="Artificial Intelligence">Artificial Intelligence</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="Cyber Security">Cyber Security</option>
+                  </optgroup>
+                  <optgroup label="Medical & Health">
+                    <option value="Medicine (MBBS)">Medicine (MBBS)</option>
+                    <option value="Dentistry (BDS)">Dentistry (BDS)</option>
+                    <option value="Pharmacy (Pharm.D)">Pharmacy (Pharm.D)</option>
+                    <option value="Nursing">Nursing</option>
+                    <option value="Physical Therapy">Physical Therapy</option>
+                  </optgroup>
+                  <optgroup label="Social Sciences">
+                    <option value="Psychology">Psychology</option>
+                    <option value="Sociology">Sociology</option>
+                    <option value="Political Science">Political Science</option>
+                    <option value="Economics">Economics</option>
+                    <option value="Mass Communication">Mass Communication</option>
+                    <option value="International Relations">International Relations</option>
+                  </optgroup>
+                  <optgroup label="Others">
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Business Administration">Business Administration</option>
+                    <option value="Electrical Engineering">Electrical Engineering</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Semester *</label>
+                <select class="form-control" id="r-sem">
+                  <option value="">— Select Semester —</option>
+                  <option value="1st Semester">1st Semester</option>
+                  <option value="2nd Semester">2nd Semester</option>
+                  <option value="3rd Semester">3rd Semester</option>
+                  <option value="4th Semester">4th Semester</option>
+                  <option value="5th Semester">5th Semester</option>
+                  <option value="6th Semester">6th Semester</option>
+                  <option value="7th Semester">7th Semester</option>
+                  <option value="8th Semester">8th Semester</option>
+                  <option value="9th Semester">9th Semester</option>
+                  <option value="10th Semester">10th Semester</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Class / Section</label>
+                <select class="form-control" id="r-class">
+                  <option value="">— Select Section —</option>
+                  <option value="Section A">Section A</option>
+                  <option value="Section B">Section B</option>
+                  <option value="Section C">Section C</option>
+                  <option value="Section D">Section D</option>
+                  <option value="Morning">Morning</option>
+                  <option value="Evening">Evening</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Session / Batch</label>
+                <select class="form-control" id="r-session">
+                  <option value="">— Select Session —</option>
+                  <option value="Fall 2023">Fall 2023</option>
+                  <option value="Spring 2024">Spring 2024</option>
+                  <option value="Fall 2024">Fall 2024</option>
+                  <option value="Spring 2025">Spring 2025</option>
+                  <option value="Fall 2025">Fall 2025</option>
+                  <option value="Spring 2026">Spring 2026</option>
+                  <option value="2024-2028">2024-2028</option>
+                  <option value="2023-2027">2023-2027</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="reg-status" class="alert alert-info" hidden></div>
+            <button class="btn btn-primary w-full" id="btn-reg-cam" onclick="startRegCamera()">📷 Start Camera &amp; Capture Face</button>
+          </div>
+
+          <!-- Camera -->
+          <div>
+            <div class="video-outer">
+              <video id="reg-video" autoplay muted playsinline></video>
+              <canvas id="reg-canvas" class="overlay"></canvas>
+              <div class="scan-ring"></div>
+              <div class="vid-status-pill scanning" id="reg-vid-pill" hidden>● Detecting…</div>
+            </div>
+
+            <!-- Sample dots -->
+            <div class="sample-dots" id="sample-dots" hidden>
+              <div class="sample-dot" id="dot-0"></div>
+              <div class="sample-dot" id="dot-1"></div>
+              <div class="sample-dot" id="dot-2"></div>
+            </div>
+
+            <!-- Captured preview -->
+            <img class="captured-preview" id="captured-preview" alt="Captured face">
+
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap" id="reg-controls" hidden>
+              <button class="btn btn-secondary btn-sm" onclick="flipRegCamera()">🔄 Flip Camera</button>
+              <button class="btn btn-danger btn-sm"   onclick="stopRegCamera()">⏹ Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ STUDENTS ═══════════════ -->
+      <div class="tab-panel" id="tab-students">
+        <div class="section-header">
+          <div class="section-title">👥 Students</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="exportStudentsCSV()">📥 Export CSV</button>
+            <button class="btn btn-ghost btn-sm"     onclick="document.getElementById('csv-import-input').click()">📤 Import CSV</button>
+            <input type="file" id="csv-import-input" accept=".csv" hidden onchange="importStudentsCSV(this)">
+          </div>
+        </div>
+
+        <div class="stats-row stats-row-3" style="margin-bottom:16px">
+          <div class="stat-card" style="--stat-color:var(--c-primary)"><div class="stat-num" id="students-stat-total">—</div><div class="stat-label">Total</div></div>
+          <div class="stat-card" style="--stat-color:var(--c-success)"><div class="stat-num" id="students-stat-present">—</div><div class="stat-label">Present Today</div></div>
+          <div class="stat-card" style="--stat-color:var(--c-danger)"><div class="stat-num" id="students-stat-absent">—</div><div class="stat-label">Absent Today</div></div>
+        </div>
+
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="student-search" placeholder="Search by name, roll, department…" oninput="filterStudents()">
+        </div>
+
+        <div class="student-grid" id="students-list"></div>
+      </div>
+
+      <!-- ═══════════════ COURSES ═══════════════ -->
+      <div class="tab-panel" id="tab-courses">
+        <div class="section-header">
+          <div class="section-title">📚 Courses</div>
+          <button class="btn btn-primary btn-sm" onclick="toggleAddCourse()">+ Add Course</button>
+        </div>
+
+        <div class="card mb-16" id="add-course-form" hidden>
+          <div class="card-title">Add New Course</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Course Code *</label><input type="text" class="form-control" id="c-code" placeholder="CS-301"></div>
+            <div class="form-group"><label class="form-label">Course Name *</label><input type="text" class="form-control" id="c-name" placeholder="Data Structures"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Department</label>
+              <select class="form-control" id="c-dept">
+                <option value="">— Select Department —</option>
+                <option value="CS">Computer Science</option>
+                <option value="SE">Software Engineering</option>
+                <option value="IT">Information Technology</option>
+                <option value="AI">Artificial Intelligence</option>
+                <option value="DS">Data Science</option>
+                <option value="Medical">Medical</option>
+                <option value="Social Sciences">Social Sciences</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Semester</label>
+              <select class="form-control" id="c-sem">
+                <option value="">— Select Semester —</option>
+                <option value="1st">1st Semester</option>
+                <option value="2nd">2nd Semester</option>
+                <option value="3rd">3rd Semester</option>
+                <option value="4th">4th Semester</option>
+                <option value="5th">5th Semester</option>
+                <option value="6th">6th Semester</option>
+                <option value="7th">7th Semester</option>
+                <option value="8th">8th Semester</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost"    onclick="toggleAddCourse()">Cancel</button>
+            <button class="btn btn-primary"  onclick="addCourse()">Save Course</button>
+          </div>
+        </div>
+
+        <div class="courses-grid" id="courses-list"></div>
+      </div>
+
+      <!-- ═══════════════ REPORTS ═══════════════ -->
+      <div class="tab-panel" id="tab-reports">
+        <div class="section-header">
+          <div class="section-title">📊 Attendance Reports</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="exportReportCSV()">📥 Export CSV</button>
+            <button class="btn btn-ghost btn-sm"     onclick="printReport()">🖨️ Print</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <select class="form-control" id="reports-course-select" style="max-width:280px" onchange="loadReport()">
+            <option value="">— Select Course to View Report —</option>
+          </select>
+        </div>
+
+        <div id="report-content">
+          <div class="card flex-center" style="padding:60px">
+            <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Select a course above</div><div class="empty-sub">Attendance statistics will appear here</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ ADMIN ═══════════════ -->
+      <div class="tab-panel" id="tab-admin">
+        <div class="section-title" style="margin-bottom:20px">⚙️ Administration</div>
+
+        <div class="inner-tabs">
+          <div class="inner-tab active" onclick="switchAdminTab('pending', this)">Pending Approvals</div>
+          <div class="inner-tab"        onclick="switchAdminTab('users', this)">All Users</div>
+          <div class="inner-tab"        onclick="switchAdminTab('settings', this)">Settings</div>
+          <div class="inner-tab"        onclick="switchAdminTab('audit', this)">Audit Log</div>
+        </div>
+
+        <!-- Pending approvals -->
+        <div id="admin-tab-pending">
+          <div class="card"><div class="card-title">⏳ Pending Approvals</div><div id="pending-users-list"></div></div>
+        </div>
+
+        <!-- All users -->
+        <div id="admin-tab-users" hidden>
+          <div class="card"><div class="card-title">👤 All Users</div><div class="table-wrap"><table><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody id="all-users-list"></tbody></table></div></div>
+        </div>
+
+        <!-- Settings -->
+        <div id="admin-tab-settings" hidden>
+          <div class="card" style="max-width:480px">
+            <div class="card-title">⚙️ System Settings</div>
+            <div class="form-group">
+              <label class="form-label">Institution Name</label>
+              <input type="text" class="form-control" id="s-inst-name" placeholder="Minhaj University Lahore">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Face Match Threshold <span id="threshold-val">0.45</span></label>
+              <input type="range" id="s-threshold" min="0.3" max="0.65" step="0.01" value="0.45" style="width:100%" oninput="document.getElementById('threshold-val').textContent=this.value">
+              <div class="text-muted text-sm mt-8">Lower = stricter matching (fewer false positives). Default: 0.45</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Allowed Email Domain (leave blank for any)</label>
+              <input type="text" class="form-control" id="s-email-domain" placeholder="@university.edu">
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+        </div>
+
+        <!-- Audit log -->
+        <div id="admin-tab-audit" hidden>
+          <div class="card"><div class="card-title">📋 Audit Log</div><div id="audit-log-list"></div></div>
+        </div>
+      </div>
+
+
+      <!-- FOOTER -->
+      <div class="app-footer" style="text-align:center; padding: 30px 20px 20px; font-size: 13px; color: var(--c-text2); margin-top: 40px; border-top: 1px solid var(--c-border);">
+        Built with ❤️ by <span style="font-weight:800; color:var(--c-primary); letter-spacing: 0.5px;">MUHAMMAD UMAIR ZAHID</span>
+      </div>
+
+    </div><!-- end content-area -->
+  </div><!-- end main-content -->
+</div><!-- end app-container -->
+
+<!-- ── SCRIPTS ───────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.2/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="js/supabase-config.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script src="js/db.js?v=3"></script>
+<script src="js/ui.js?v=3"></script>
+<script src="js/face.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
+<script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(console.warn);
+  }
+</script>
+</body>
+</html>

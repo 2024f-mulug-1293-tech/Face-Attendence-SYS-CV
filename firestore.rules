@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isApproved() {
+      return isAuthed() && userDoc().approved == true;
+    }
+
+    function isTeacher() {
+      return isApproved() &&
+             (userDoc().role == 'teacher' || userDoc().role == 'superadmin');
+    }
+
+    function isSuperAdmin() {
+      return isAuthed() && userDoc().role == 'superadmin';
+    }
+
+    // ── Users collection ────────────────────────────────────────
+    match /users/{uid} {
+      // Anyone authenticated can read their own doc
+      allow read: if isAuthed() && request.auth.uid == uid;
+      // Super Admin can read all users
+      allow read: if isSuperAdmin();
+      // Users can write their own doc (for profile updates)
+      allow write: if isAuthed() && request.auth.uid == uid;
+      // Super Admin can write any user doc
+      allow write: if isSuperAdmin();
+      // Allow new user creation (first login)
+      allow create: if isAuthed() && request.auth.uid == uid;
+    }
+
+    // ── Students collection ─────────────────────────────────────
+    match /students/{studentId} {
+      allow read:   if isApproved();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Courses collection ──────────────────────────────────────
+    match /courses/{courseId} {
+      allow read:   if isApproved();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Sessions collection ─────────────────────────────────────
+    match /sessions/{sessionId} {
+      allow read:   if isApproved();
+      allow create: if isTeacher();
+      allow update: if isTeacher();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Attendance Records ──────────────────────────────────────
+    match /attendanceRecords/{recordId} {
+      allow read:   if isApproved();
+      allow create: if isTeacher();
+      // Only superadmin can edit or delete attendance records
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Settings ────────────────────────────────────────────────
+    match /settings/{docId} {
+      allow read:  if isApproved();
+      allow write: if isSuperAdmin();
+    }
+
+    // ── Audit Log ───────────────────────────────────────────────
+    match /auditLog/{logId} {
+      allow read:   if isSuperAdmin();
+      // Any authenticated user can write audit logs (append-only)
+      allow create: if isAuthed();
+      // Nobody can edit or delete audit logs (immutable)
+      allow update, delete: if false;
+    }
+  }
+}
