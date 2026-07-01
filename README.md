@@ -43,6 +43,29 @@ FaceAttend is engineered to be lightweight, secure, and infinitely scalable with
 
 ---
 
+## 🏛️ Complete System Architecture & Tech Stack
+
+This application utilizes a modern, decoupled Serverless Architecture (Backend-as-a-Service + Edge Frontend).
+
+### **Client (Frontend)**
+- **Core**: HTML5, Vanilla JavaScript (ES6+), CSS3 (Custom Properties & Grid)
+- **Face Recognition Engine**: `face-api.js` (TensorFlow.js wrapper for browser-based WebGL inference)
+- **Data Visualization**: `Chart.js` (for rendering dynamic dashboard analytics)
+- **Email Notifications**: `EmailJS` (Client-side SMTP wrapper for sending email alerts)
+- **Hosting / CDN**: Vercel Edge Network (Global CDN for static assets)
+
+### **Server & Backend (Supabase BaaS)**
+- **Database**: PostgreSQL (Fully relational database with strict Row-Level Security)
+- **Authentication**: Supabase Auth (Google OAuth 2.0 Provider & Email/Password)
+- **Storage**: Supabase Storage Buckets (For secure storage of student biometric images)
+- **API Protocol**: REST & WebSockets (via `@supabase/supabase-js` client library for real-time reactivity)
+
+### **External Services & Integrations**
+- **Google Cloud Console**: Manages OAuth 2.0 Client IDs for secure Google Sign-In.
+- **GitHub**: Version control, repository management, and CI/CD integration.
+
+---
+
 ## 🚀 Quick Start & Local Setup
 
 Because the heavy lifting is handled by Supabase and client-side AI, deploying FaceAttend is effortless.
