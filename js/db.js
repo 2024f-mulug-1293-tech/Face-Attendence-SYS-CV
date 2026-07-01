@@ -364,7 +364,7 @@ const SessionsDB = {
     fetch();
 
     const channel = supabase.channel(`public:sessions:open:${Math.random()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions', filter: 'status=eq.open' }, fetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, fetch)
       .subscribe();
       
     return () => supabase.removeChannel(channel);
