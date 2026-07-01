@@ -456,15 +456,15 @@ function renderActiveSessions(sessions) {
   }
   
   const renderList = (showDropBtn) => sessions.map(s => `
-    <div class="activity-item" style="display:flex; justify-content:space-between; align-items:center;">
-      <div style="display:flex; align-items:center; gap:12px;">
+    <div class="activity-item" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex: 1; min-width: 200px;">
         <div class="session-live-dot"></div>
         <div class="activity-text">
           <strong>${UI.escapeHTML(s.courseName)}</strong><br>
           <span class="text-muted text-sm">${UI.escapeHTML(s.teacherName)} • ${UI.escapeHTML(s.room || 'No room')}</span>
         </div>
       </div>
-      <div style="display:flex; gap: 12px; align-items: center;">
+      <div style="display:flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
         <div class="badge badge-success">${s.totalPresent || 0} present</div>
         ${showDropBtn ? `
           <button class="btn btn-primary btn-sm" onclick="resumeSession('${s.id}')" title="Resume taking attendance for this session">▶ Resume</button>
@@ -1070,10 +1070,10 @@ function renderStudentGrid(students) {
       <div>${UI.escapeHTML(s.dept || '—')}</div>
       <div>${UI.escapeHTML(s.sem || '—')}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+    <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
       <button class="btn btn-secondary btn-sm" onclick="viewStudentHistory('${s.id}')">History</button>
-      ${(s.approved === false && (Auth.userDoc.role === 'superadmin' || Auth.userDoc.role === 'teacher')) ? `<button class="btn btn-success btn-sm" onclick="approveStudentFace('${s.id}')">✓ Approve Face</button>` : `<button class="btn btn-ghost btn-sm" onclick="deleteStudent('${s.id}','${s.name}')">🗑</button>`}
-      ${Auth.userDoc?.role === 'superadmin' ? `<button class="btn btn-danger btn-sm" onclick="hardResetStudent('${s.id}', '${s.email || ''}', '${s.photo_url || ''}')" title="Factory Reset Student">🗑️ Reset</button>` : ''}
+      ${(s.approved === false && (Auth.userDoc.role === 'superadmin' || Auth.userDoc.role === 'teacher')) ? `<button class="btn btn-success btn-sm" onclick="approveStudentFace('${s.id}')">✔️ Approve Face</button>` : `<button class="btn btn-ghost btn-sm" onclick="deleteStudent('${s.id}','${s.name}')">🗑️</button>`}
+      ${Auth.userDoc?.role === 'superadmin' ? `<button class="btn btn-danger btn-sm" onclick="hardResetStudent('${s.id}', '${s.email || ''}', '${s.photo_url || ''}')" title="Factory Reset Student">⚠️ Reset</button>` : ''}
     </div>
   </div>`).join('');
 }
@@ -1428,27 +1428,31 @@ async function loadPendingUsers() {
   
   if (users.length > 0) {
     html += '<h4 style="margin:16px 0 8px">Pending Staff Accounts</h4>';
-    html += users.map(u => `
-      <div class="activity-item">
+    html += users.map(u => {
+      const actionHtml = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-success btn-sm" onclick="approveUser('${u.uid}','${u.displayName}')">✔️ Approve</button>
+        ${u.email !== '2024f-mulug-1293@mul.edu.pk' ? `<button class="btn btn-danger btn-sm"  onclick="rejectUser('${u.uid}','${u.displayName}')">❌ Reject</button>` : ''}
+      </div>`;
+      return `<div class="activity-item">
         <img class="activity-avatar" src="${u.photoURL || UI.getAvatarDataUrl(u.displayName)}" alt="">
         <div class="activity-text"><strong>${u.displayName}</strong><br><span class="text-muted">${u.email}</span></div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-success btn-sm" onclick="approveUser('${u.uid}','${u.displayName}')">✓ Approve</button>
-          ${u.email !== '2024f-mulug-1293@mul.edu.pk' ? `<button class="btn btn-danger btn-sm"  onclick="rejectUser('${u.uid}','${u.displayName}')">✗ Reject</button>` : ''}
-        </div>
-      </div>`).join('');
+        ${actionHtml}
+      </div>`}).join('');
   }
   
   if (students && students.length > 0) {
     html += '<h4 style="margin:16px 0 8px">Pending Student Faces</h4>';
-    html += students.map(s => `
-      <div class="activity-item">
+    html += students.map(s => {
+      const actionHtml = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-success btn-sm" onclick="approveStudentFace('${s.id}').then(() => loadPendingUsers())">✔️ Approve Face</button>
+      </div>`;
+      return `<div class="activity-item">
         <img class="activity-avatar" src="${s.photo_url || UI.getAvatarDataUrl(s.name)}" alt="">
         <div class="activity-text"><strong>${UI.escapeHTML(s.name)}</strong><br><span class="text-muted">${UI.escapeHTML(s.roll)} • ${UI.escapeHTML(s.email) || ''}</span></div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-success btn-sm" onclick="approveStudentFace('${s.id}').then(() => loadPendingUsers())">✓ Approve Face</button>
-        </div>
-      </div>`).join('');
+        ${actionHtml}
+      </div>`}).join('');
   }
   
   if (!html) {
