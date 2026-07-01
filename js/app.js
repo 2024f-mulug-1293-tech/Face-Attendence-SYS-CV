@@ -103,8 +103,8 @@ function populateUserInfo(firebaseUser, userDoc) {
 
   document.getElementById('sidebar-user-name').textContent = userDoc.displayName;
   document.getElementById('sidebar-user-role').textContent = userDoc.role;
-  document.getElementById('sidebar-institution').textContent = userDoc.institution || APP_CONFIG.institutionName;
-  document.getElementById('topbar-institution').textContent  = userDoc.institution || APP_CONFIG.institutionName;
+  document.getElementById('sidebar-institution').textContent = APP_CONFIG.institutionName;
+  document.getElementById('topbar-institution').textContent  = APP_CONFIG.institutionName;
 
   ['sidebar-avatar', 'topbar-avatar'].forEach(id => {
     const el = document.getElementById(id);
@@ -445,23 +445,60 @@ function loadDashboard() {
 }
 
 function renderActiveSessions(sessions) {
-  const el = document.getElementById('active-sessions-list');
+  const elDash = document.getElementById('active-sessions-list');
+  const elAtt = document.getElementById('attendance-active-sessions-list');
+  
   if (!sessions.length) {
-    el.innerHTML = UI.emptyState('📷', 'No active sessions', 'Click "New Session" to start');
+    const emptyHtml = UI.emptyState('📷', 'No active sessions', 'Click "New Session" to start');
+    if(elDash) elDash.innerHTML = emptyHtml;
+    if(elAtt) elAtt.innerHTML = emptyHtml;
     return;
   }
-  el.innerHTML = sessions.map(s => `
-    <div class="activity-item">
-      <div class="session-live-dot"></div>
-      <div class="activity-text">
-        <strong>${UI.escapeHTML(s.courseName)}</strong><br>
-        <span class="text-muted text-sm">${UI.escapeHTML(s.teacherName)} • ${UI.escapeHTML(s.room || 'No room')}</span>
+  
+  const renderList = (showDropBtn) => sessions.map(s => `
+    <div class="activity-item" style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="session-live-dot"></div>
+        <div class="activity-text">
+          <strong>${UI.escapeHTML(s.courseName)}</strong><br>
+          <span class="text-muted text-sm">${UI.escapeHTML(s.teacherName)} • ${UI.escapeHTML(s.room || 'No room')}</span>
+        </div>
       </div>
-      <div style="text-align:right">
+      <div style="display:flex; gap: 12px; align-items: center;">
         <div class="badge badge-success">${s.totalPresent || 0} present</div>
+        ${showDropBtn ? `<button class="btn btn-danger btn-sm" onclick="dropSession('${s.id}')" title="Instantly close this session and free the room">⏹ Drop</button>` : ''}
       </div>
     </div>`).join('');
+
+  if(elDash) elDash.innerHTML = renderList(false);
+  if(elAtt) elAtt.innerHTML = renderList(true);
 }
+
+window.dropSession = async (sessionId) => {
+  if (!confirm('Are you sure you want to completely drop and close this session? This will immediately free up the room.')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('sessions')
+      .update({ status: 'closed', end_time: new Date().toISOString() })
+      .eq('id', sessionId);
+      
+    if (error) throw error;
+    
+    UI.toast('Session successfully dropped. Room availability synchronized.', 'success');
+    
+    // If the dropped session was currently actively selected in the attendance view, clear it
+    if (activeSession && activeSession.id === sessionId) {
+      activeSession = null;
+      document.getElementById('att-session-info').hidden = true;
+      document.getElementById('att-no-session').hidden = false;
+      stopAttCamera();
+    }
+  } catch (err) {
+    console.error('Error dropping session:', err);
+    UI.toast('Failed to drop session.', 'error');
+  }
+};
 
 async function loadRecentActivity() {
   const logs = await AuditLogDB.getRecent(8);

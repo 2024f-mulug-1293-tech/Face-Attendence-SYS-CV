@@ -245,11 +245,18 @@
 
         <!-- No session -->
         <div id="att-no-session">
-          <div class="card" style="text-align:center;padding:40px">
+          <div class="card" style="text-align:center;padding:40px; margin-bottom: 24px;">
             <div style="font-size:52px;margin-bottom:12px">📅</div>
-            <div style="font-size:16px;font-weight:700;margin-bottom:6px">No Active Session</div>
-            <div style="font-size:13px;color:var(--c-text2);margin-bottom:20px">Open a session to start marking attendance</div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:6px">No Active Session Selected</div>
+            <div style="font-size:13px;color:var(--c-text2);margin-bottom:20px">Select an active session below or open a new one to start marking attendance</div>
             <button class="btn btn-primary" onclick="openSessionModal()">📅 Open New Session</button>
+          </div>
+          
+          <div class="card">
+            <div class="card-title">🟢 Active Sessions Management</div>
+            <div id="attendance-active-sessions-list">
+              <div style="padding:20px;text-align:center;color:var(--c-text2);font-size:13px">Loading active sessions...</div>
+            </div>
           </div>
         </div>
 
