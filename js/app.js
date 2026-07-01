@@ -466,13 +466,34 @@ function renderActiveSessions(sessions) {
       </div>
       <div style="display:flex; gap: 12px; align-items: center;">
         <div class="badge badge-success">${s.totalPresent || 0} present</div>
-        ${showDropBtn ? `<button class="btn btn-danger btn-sm" onclick="dropSession('${s.id}')" title="Instantly close this session and free the room">⏹ Drop</button>` : ''}
+        ${showDropBtn ? `
+          <button class="btn btn-primary btn-sm" onclick="resumeSession('${s.id}')" title="Resume taking attendance for this session">▶ Resume</button>
+          <button class="btn btn-danger btn-sm" onclick="dropSession('${s.id}')" title="Instantly close this session and free the room">⏹ Drop</button>
+        ` : ''}
       </div>
     </div>`).join('');
 
   if(elDash) elDash.innerHTML = renderList(false);
   if(elAtt) elAtt.innerHTML = renderList(true);
 }
+
+window.resumeSession = (sessionId) => {
+  const session = allActiveSessions.find(s => s.id === sessionId);
+  if (!session) {
+    UI.toast('Session not found', 'error');
+    return;
+  }
+  
+  // Set the global active session and transition UI
+  activeSession = session;
+  
+  // Switch to the attendance tab explicitly just in case they clicked it from elsewhere (though right now it's only in the attendance tab)
+  switchTab('attendance');
+  
+  showAttendanceSession();
+  startAttCamera();
+  UI.toast(`Resumed session: ${session.courseName}`, 'success');
+};
 
 window.dropSession = async (sessionId) => {
   if (!confirm('Are you sure you want to completely drop and close this session? This will immediately free up the room.')) return;
