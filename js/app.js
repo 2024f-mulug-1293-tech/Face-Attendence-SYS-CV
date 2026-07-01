@@ -832,9 +832,10 @@ async function startRegCamera() {
     return;
   }
 
-  // Check duplicate roll
-  const exists = await StudentsDB.rollExists(roll);
-  if (exists) { UI.toast(`Roll number "${roll}" already registered`, 'error'); return; }
+  // Check duplicate roll (ignoring current student if updating)
+  const updateStudentId = document.getElementById('tab-register').dataset.studentId;
+  const exists = await StudentsDB.rollExists(roll, updateStudentId);
+  if (exists) { UI.toast(`Roll number "${roll}" already registered to another student`, 'error'); return; }
 
   try {
     const video  = document.getElementById('reg-video');

@@ -210,8 +210,12 @@ const StudentsDB = {
     await logAudit('DELETE_STUDENT', { student_id: id });
   },
 
-  async rollExists(roll) {
-    const { data, error } = await supabase.from('students').select('id').eq('roll', roll).eq('active', true);
+  async rollExists(roll, excludeStudentId = null) {
+    let query = supabase.from('students').select('id').eq('roll', roll).eq('active', true);
+    if (excludeStudentId) {
+      query = query.neq('id', excludeStudentId);
+    }
+    const { data, error } = await query;
     if (error) return false;
     return data && data.length > 0;
   },
