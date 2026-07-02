@@ -800,7 +800,15 @@ window.manualScan = manualScan;
 function stopAttCamera() {
   if (autoScanTimer) { clearInterval(autoScanTimer); autoScanTimer = null; }
   engine?.stopLoop();
-  if (attStream) { attStream.getTracks().forEach(t => t.stop()); attStream = null; }
+  if (attStream) { 
+    attStream.getTracks().forEach(t => t.stop()); 
+    attStream = null; 
+  }
+  const video = document.getElementById('att-video');
+  if (video) {
+    video.srcObject = null;
+    video.load();
+  }
   attRunning = false;
 }
 
@@ -1020,7 +1028,15 @@ function clearRegForm() {
 
 function stopRegCamera() {
   engine?.stopLoop();
-  if (regStream) { regStream.getTracks().forEach(t => t.stop()); regStream = null; }
+  if (regStream) { 
+    regStream.getTracks().forEach(t => t.stop()); 
+    regStream = null; 
+  }
+  const video = document.getElementById('r-video');
+  if (video) {
+    video.srcObject = null;
+    video.load();
+  }
   regRunning = false;
 }
 window.stopRegCamera = stopRegCamera;

@@ -307,9 +307,6 @@ const SessionsDB = {
 
     handlePgError(error, 'SessionsDB.open');
 
-    // Increment course total classes
-    await supabase.rpc('increment_course_classes', { p_course_id: data.courseId });
-
     await logAudit('OPEN_SESSION', { session_id: inserted.id, course: data.courseName });
     
     return {
@@ -335,32 +332,7 @@ const SessionsDB = {
     const fetch = async () => {
       const { data, error } = await supabase.from('sessions').select('*').eq('status', 'open').order('created_at', { ascending: false });
       if (!error && data) {
-        const now = new Date();
-        const activeSessions = [];
-        
-        for (const s of data) {
-          let shouldClose = false;
-          
-          // Check 1: 4-hour absolute fallback
-          const createdAt = new Date(s.created_at);
-          const hoursOpen = (now - createdAt) / (1000 * 60 * 60);
-          if (hoursOpen > 4) shouldClose = true;
-          
-          // Check 2: End time passed
-          if (!shouldClose && s.end_time && s.date) {
-            const endDate = new Date(`${s.date}T${s.end_time}:00`);
-            if (now > endDate) shouldClose = true;
-          }
-          
-          if (shouldClose) {
-            console.log(`[Zombie Cleanup] Auto-closing session ${s.id}`);
-            SessionsDB.close(s.id); // Background close
-          } else {
-            activeSessions.push(s);
-          }
-        }
-
-        callback(activeSessions.map(s => ({
+        callback(data.map(s => ({
           ...s, courseId: s.course_id, courseName: s.course_name, 
           teacherName: s.teacher_name, totalPresent: s.total_present
         })));
