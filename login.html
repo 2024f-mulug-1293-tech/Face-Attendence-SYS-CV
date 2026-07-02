@@ -237,7 +237,8 @@ async function checkUserAccess(supabaseUser) {
     
     // Smart Role Assignment
     const ownerEmail = '2024f-mulug-1293@mul.edu.pk';
-    const studentRegex = /^\d{2,4}[a-zA-Z]*-[a-zA-Z0-9]+-\d+@/i;
+    // Format: {4-digit year}{f|s for fall/spring}-{keyword}-{roll}@...
+    const studentRegex = /^\d{4}[fs]-[a-zA-Z0-9]+-\d+@/i;
     const teacherRegex = /^[a-zA-Z]+[\.\-\_][a-zA-Z0-9]+@/i;
     
     const isOwner = email === ownerEmail;
