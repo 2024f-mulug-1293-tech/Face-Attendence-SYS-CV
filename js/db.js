@@ -133,8 +133,10 @@ const StudentsDB = {
       photo_url: photoURL,
       descriptor: JSON.stringify(data.descriptor),
       descriptors: JSON.stringify(data.descriptors),
+      embedding: '[' + Array.from(data.descriptor).join(',') + ']',
+      created_by: Auth.user.id,
       active: true,
-      created_by: Auth.user.id
+      approved: false
     }]);
 
     handlePgError(error, 'StudentsDB.add');
@@ -165,6 +167,7 @@ const StudentsDB = {
     const { error } = await supabase.from('students').update({
       descriptor: JSON.stringify(data.descriptor),
       descriptors: JSON.stringify(data.descriptors),
+      embedding: '[' + Array.from(data.descriptor).join(',') + ']',
       photo_url: photoURL,
       email: data.email || null,
       sem: data.sem,
@@ -183,14 +186,12 @@ const StudentsDB = {
 
   listenAll(callback) {
     const fetch = async () => {
-      const { data, error } = await supabase.from('students').select('*').eq('active', true).order('name');
+      // EXCLUDE heavy descriptor/embedding columns from realtime fetch for massive scalability!
+      const { data, error } = await supabase.from('students').select('id, roll, name, email, dept, sem, cls, sess, photo_url, active, created_by, created_at, approved').eq('active', true).order('name');
       if (!error && data) {
-        // Parse descriptors back to arrays
         const students = data.map(s => ({
           ...s,
-          photoURL: s.photo_url,
-          descriptor: typeof s.descriptor === 'string' ? JSON.parse(s.descriptor) : s.descriptor,
-          descriptors: typeof s.descriptors === 'string' ? JSON.parse(s.descriptors) : s.descriptors
+          photoURL: s.photo_url
         }));
         callback(students);
       }

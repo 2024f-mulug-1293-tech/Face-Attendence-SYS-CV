@@ -733,15 +733,8 @@ async function doAutoScan() {
     return;
   }
 
-  // Match against all registered students who have valid descriptors
-  const validStudents = allStudents.filter(s =>
-    Array.isArray(s.descriptor) && s.descriptor.length === 128
-  );
-  if (!validStudents.length) {
-    scanCooldown = false;
-    return;
-  }
-  const result = engine.findBestMatch(desc, validStudents, APP_CONFIG.defaultFaceThreshold);
+  // Match against the backend using pgvector for infinite scalability
+  const result = await engine.findBestMatchRPC(desc, APP_CONFIG.defaultFaceThreshold);
 
   if (result.isMatch) {
     // Mark attendance (scanCooldown remains true until cooldown timeout)

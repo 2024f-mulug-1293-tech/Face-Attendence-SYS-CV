@@ -366,6 +366,41 @@ class FaceEngine {
     };
   }
 
+  /**
+   * Find the closest student match by executing a Remote Procedure Call (RPC) 
+   * against the Supabase pgvector backend.
+   * @param {Float32Array} queryDesc descriptor from the camera
+   * @param {number} threshold max distance to consider a match
+   */
+  async findBestMatchRPC(queryDesc, threshold = 0.45) {
+    if (!queryDesc) {
+      return { match: null, distance: 1, confidence: 0, isMatch: false, isHighConfidence: false, separation: 0 };
+    }
+
+    const embeddingStr = '[' + Array.from(queryDesc).join(',') + ']';
+    const { data, error } = await supabase.rpc('match_face', {
+      query_embedding: embeddingStr,
+      match_threshold: threshold
+    });
+
+    if (error || !data || data.length === 0) {
+      return { match: null, distance: 1, confidence: 0, isMatch: false, isHighConfidence: false, separation: 1 };
+    }
+
+    const best = data[0];
+    const confidence = Math.max(0, Math.min(100, Math.round((1 - best.distance) * 100)));
+    const isMatch = best.distance < threshold;
+
+    return {
+      match: isMatch ? best : null,
+      distance: best.distance,
+      confidence,
+      isMatch,
+      isHighConfidence: isMatch && confidence > 78,
+      separation: 1 // RPC only returns best match for max speed
+    };
+  }
+
   // ──────────────────────────────────────────────────────────────
   //  HIGH-PERFORMANCE DUAL-LOOP ENGINE
   // ──────────────────────────────────────────────────────────────
